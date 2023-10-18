@@ -7,3 +7,8 @@ Steps to use the Payday 3 Black Market:
   5. Enjoy!
 
 [Build on Replit](https://replit.com/github/MysticJourney77/payday3-black-market)
+
+This version of the black market script has the following additions:
+- Script now restarts after a succesful transaction instead of quitting
+- Main menu noq has "quit" option
+- Heist favors can be purchased individually. Added a menu to select individual heists and favors for purchase
