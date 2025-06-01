@@ -1,7 +1,6 @@
 Steps to use the Payday 3 Black Market:
 
-  1. Run the code in any environment, such as locally or Use the below "Build on Replit".
-  2. Run main.py.
-  3. Enter your Payday 3 credentials.
+  1. Enter your Nebula email and password into the .env file.
+  2. Run main.py using "py main.py" in powershell.
   4. Follow the prompts to buy the items you want.
   5. Enjoy!
