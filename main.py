@@ -2,6 +2,8 @@ import requests
 import json
 import secrets
 import string
+import os
+from dotenv import set_key, find_dotenv , load_dotenv
 
 
 url_token = f"https://nebula.starbreeze.com/iam/v3/oauth/token"
@@ -10,6 +12,66 @@ random_bytes = secrets.token_bytes(16)
 
 random_string = ''.join(secrets.choice(string.hexdigits) for i in range(string_length))
 
+def generate_random_hex_string(string_length):
+    return ''.join(secrets.choice(string.hexdigits) for _ in range(string_length))
+
+def create_data_dictionary():
+    global configSlotEntitlementId
+    global configSlotItemId
+    global weaponInSlotEntitlementId
+    global weaponInSlotAccelByteItemId
+
+    weaponInSlotAccelByteItemId = generate_random_hex_string(string_length)
+    weaponInSlotEntitlementId = generate_random_hex_string(string_length)
+    configSlotEntitlementId = generate_random_hex_string(string_length)
+    configSlotItemId = generate_random_hex_string(string_length)
+    return
+
+def get_valid_currencycode():
+    while True:
+        currency_custom = input("Enter currency: ").strip()
+        if currency_custom.isalpha():
+            return currency_custom.upper()
+        else:
+            print("Invalid input.") 
+
+def delete_file(file_path):
+    if os.path.exists(file_path):
+        os.remove(file_path)
+    else:
+        print(f"The file '{file_path}' does not exist.")
+
+def read_json_file(file_path):
+    try:
+        with open(file_path, 'r') as json_file:
+            data = json.load(json_file)
+        return data
+    except FileNotFoundError:
+        print(f"File not found: {file_path}")
+        return None
+    
+def write_json_file(file_path, data):
+    try:
+        with open(file_path, "w") as json_file:
+            json.dump(data, json_file, indent=4)
+        return data
+    except FileNotFoundError:
+        print(f"File not found: {file_path}")
+        return None
+    
+def append_to_json(json_filename, data_to_append):
+    try:
+        with open(json_filename, "a") as json_file:
+            if os.path.getsize(json_filename) > 0:
+                json_file.write(",\n")
+            json.dump(data_to_append, json_file, indent=4)
+    except Exception as e:
+        print(f"Error appending data to {json_filename}: {e}")
+
+def clear_json_file(filename):
+    with open(filename, 'w') as file:
+        file.truncate(0)
+       
 token_header = {
         "Host": "nebula.starbreeze.com",
     "Content-Type": "application/x-www-form-urlencoded",
@@ -30,14 +92,38 @@ data_token = {
     "extend_exp": "true"
 }
 
-
 print("Login to Nebula")
+load_dotenv(find_dotenv())
+username = os.getenv("PD3USERNAME")
+password = os.getenv("PD3PASSWORD")
 
-username_request = input("Enter your EmailID: ")
-password_request = input("Enter the Password: ")
-data_token["username"] = username_request
-data_token["password"] = password_request
+if username and password:
+    print("Autologin with the following credentials:")
+    print(f"Username: {username}")
+    masked_password = '*' * len(password)
+    print(f"Password: {masked_password}")
+
+    choice = input("Do you want to enter new login credentials? (y/n): ")
+    if choice.lower() == 'y':
+        username = None
+
+else:
+    print("No login credentials found.")
+    choice = input("Do you want to enter new login credentials? (y/n): ")
+    if choice.lower() == 'y':
+        username = None
+if not username:
+    print("Please enter new login credentials:")
+    username = input("Username: ")
+    password = input("Password: ")
+    set_key(".env", "PD3USERNAME", username)
+    set_key(".env", "PD3PASSWORD", password)
+    print("Login credentials have been saved.")
+
+data_token["username"] = username
+data_token["password"] = password
 response_token_value = requests.post(url_token, headers=token_header, data=data_token)
+
 while True:
     try:
         if response_token_value.status_code == 200:
@@ -51,69 +137,59 @@ while True:
             exit(0)
     except ValueError:
         print("Invalid input.")
-        
-while True:
-    with open("response.json", "w") as json_file:
-        json.dump(response_data, json_file, indent=4)
-    print(" ")
-    print("Option - 1 : Buy 10X C-Stacks")
+
+
+while True :
+    print("Thanks for using Payday3 Black Market")
+    write_json_file("response.json",response_data)
+    print("Option - 1 : Buy C-Stacks")
     print("Option - 2 : Custom Buy")
-    print("Option - 3 : All Heist Favors")
-    print("Option - 4 : Specific Heist Favor")
-    print("Option - 9 : Quit")
+    print("Option - 3 : Buy Heist Favors")
+    print("Option - 4 : Buy Outfits")
+    print("Option - 5 : Buy Paint Scheme")
+    print("Option - 6 : Buy Inventory")
+    print("Option - 7 : Buy Paint")
+    print("Option - 0 : Exit")
 
     options = {
-        1: "Option - 1 : Buy 10X C-Stacks",
-        2: "Option - 2 : Custom Buy",
-        3: "Option - 3 : All Heist Favors",
-        4: "Option - 4 : Specific Heist Favor",
-        9: "Option - 9 : Quit",
-    }
-    with open("response.json", "r") as config_file:
-       config_data = json.load(config_file)
+    0: "Option - 0 : Exit",    
+    1: "Option - 1 : Buy C-Stacks",
+    2: "Option - 2 : Custom Buy",
+    3: "Option - 3 : Heist Favors",
+    4: "Option - 4 : Dress",
+    5: "Option - 5 : Paint Scheme",
+    6: "Option - 6 : Inventory",
+    7: "Option - 7 : Paint"
+   }
+    config_data = read_json_file("response.json")
     account_id = config_data.get("user_id", "")
     authorization_token = config_data.get("token", "")
 
     url = f"https://nebula.starbreeze.com/platform/public/namespaces/pd3/users/{account_id}/orders" 
+    url_save_data = f"https://nebula.starbreeze.com/cloudsave/v1/namespaces/pd3/users/{account_id}/records/progressionsavegame"
 
     headers = {
-        "Accept-Encoding": "deflate, gzip",
-        "Content-Type": "application/json",
-        "Accept": "application/json",
-        "Authorization": f"Bearer {authorization_token}",
-        "Namespace": "pd3",
-        "Game-Client-Version": "1.0.0.0",
-        "AccelByte-SDK-Version": "21.0.3",
-        "AccelByte-OSS-Version": "0.8.11",
-        "User-Agent": "PAYDAY3/++UE4+Release-4.27-CL-0 Windows/10.0.19045.1.256.64bit",
-    }
+    "Accept-Encoding": "deflate, gzip",
+    "Content-Type": "application/json",
+    "Accept": "application/json",
+    "Authorization": f"Bearer {authorization_token}",
+    "Namespace": "pd3",
+    "Game-Client-Version": "1.0.0.1",
+    "AccelByte-SDK-Version": "21.0.3",
+    "AccelByte-OSS-Version": "0.8.11",
+    "User-Agent": "PAYDAY3/++UE4+Release-4.27-CL-0 Windows/10.0.19045.1.256.64bit",
+   }
     data = {
-        "itemId": None,  
-        "quantity": 1,
-        "price": None,
-        "discountedPrice": None,
-        "currencyCode": None,
-        "region": "SE",
-        "language": "en-US",
-        "returnUrl": "http://127.0.0.1"
+    'itemId': None,  
+    "quantity": 1,
+    'price': None,
+    'discountedPrice': None,
+    'currencyCode': None,
+    "region": "SE",
+    "language": "en-US",
+    "returnUrl": "http://127.0.0.1"
     }
-    def get_valid_currencycode():
-
-        while True:
-            currency_custom = input("Enter currency: ").strip()
-            if currency_custom.isalpha():
-                return currency_custom.upper()
-            else:
-                print("Invalid input.")
-                
-    favorOptions = {
-        1: "Favor 1",
-        2: "Favor 2",
-        3: "Favor 3",
-        4: "Favor 4",
-    }
-
-                
+    
     while True:
         try:
             choice = int(input("Enter the option: "))
@@ -123,510 +199,234 @@ while True:
                 print("Invalid choice. Please enter a valid option.")
         except ValueError:
             print("Invalid input. Please enter a valid option.")
+    if choice == 0:
+        break
 
- 
-
-    if choice == 1:
-        repeat_request = int(input("Enter the total number of times you want the request to send: ")) 
-        for _ in range(repeat_request):
-            data["itemId"] = "dd693796e4fb4e438971b65eecf6b4b7"
-            data["price"] = 90000
-            data["discountedPrice"] = 90000
-            data["currencyCode"] = "CASH"
+    elif choice == 1:
+        repeat_request_cstack = int(input("Enter the total number of times you want the request to send: "))
+        for _ in range(repeat_request_cstack):
+            data['itemId'] = "dd693796e4fb4e438971b65eecf6b4b7"
+            data['price'] = 90000
+            data['discountedPrice'] = 90000
+            data['currencyCode'] = "CASH"
             response = requests.post(url, json=data, headers=headers)
-            print(f"C-Stacks Bought successfully - {_ + 1}")  
+            print(f"C-Stacks Bought successfully - {_ + 1}")
+        delete_file("response.json")
 
     elif choice == 2:
-        repeat_request = int(input("Enter the total number of times you want the request to send: ")) 
         item_id_custom = input("Enter itemID: ")
         price_custom = int(input("Enter price: "))
         discounted_custom = int(input("Enter discountedprice: "))
         currency_custom = get_valid_currencycode()
-        data["itemId"] = item_id_custom
-        data["price"] = price_custom
-        data["discountedPrice"] = discounted_custom
-        data["currencyCode"] = currency_custom
-        for _ in range(repeat_request):
+        data['itemId'] = item_id_custom
+        data['price'] = price_custom
+        data['discountedPrice'] = discounted_custom
+        data['currencyCode'] = currency_custom
+        repeat_request_custom = int(input("Enter the total number of times you want the request to send: "))  
+        for _ in range(repeat_request_custom):
             response = requests.post(url, json=data, headers=headers)
             print(f"Custom Item Purchased - {_ + 1}")
+        delete_file("response.json")
 
     elif choice == 3:
-        repeat_request = int(input("Enter the total number of times you want the request to send: ")) 
-        with open('Payday3_offsets.json', 'r') as json_file:
-            item_id_json = json.load(json_file)
-        for _ in range(repeat_request):
-            print(f"Heist Item Purchased - {_ + 1}")
-            for item_id in item_id_json["itemId"]:
-                if item_id == "65a355215bb8473bbf9d3f2661211899":
-                    data["itemId"] = item_id
-                    data["price"] = 1999
-                    data["discountedPrice"] = 1999
-                    data["currencyCode"] = "CASH"
-                    print(f"Item Purchased = {item_id}")
-                else:
-                    data["itemId"] = item_id
-                    data["price"] = 1000
-                    data["discountedPrice"] = 1000
-                    data["currencyCode"] = "CASH"
-                    print(f"item_id= {item_id}")
-                response = requests.post(url, json=data, headers=headers)
-                print(response)
-    elif choice == 4:
-        print(" ")
-        print("Option - 1 : No Rest Ror The Wicked Favors")
-        print("Option - 2 : Road Rage Favors")
-        print("Option - 3 : Dirty Ice Favors")
-        print("Option - 4 : Rock The Cradle Favors")
-        print("Option - 5 : Under The Surphaze Favors")
-        print("Option - 6 : Gold & Sharke Favors")
-        print("Option - 7 : 99 Boxes Favors")
-        print("Option - 8 : Touch The Sky Favors")
-
-        heistOptions = {
-            1: "Option - 1 : No Rest Ror The Wicked Favors",
-            2: "Option - 2 : Road Rage Favors",
-            3: "Option - 3 : Dirty Ice Favors",
-            4: "Option - 4 : Rock The Cradle Favors",
-            5: "Option - 5 : Under The Surphaze Favors",
-            6: "Option - 6 : Gold & Sharke Favors",
-            7: "Option - 7 : 99 Boxes Favors",
-            8: "Option - 8 : Touch The Sky Favors",
-        }
-
+        item_id_json = read_json_file("Payday3_offsets.json")
+        heistfav = item_id_json['Heistfav']
+        heist_list = []
+        counter = 1
+        for heist_group in heistfav:
+            for heist_alias, heist_data in heist_group.items():
+                for heist_info in heist_data:
+                    print("\n" f"{heist_alias}: ")
+                    for key, value in heist_info.items():
+                        print(f"{counter}. {key}: {value['price']}$")
+                        heist_list.append((key,value))
+                        counter += 1
+        print()
+        heist_added_inv = []
         while True:
-            try:
-                heistChoice = int(input("Enter the option: "))
-                if heistChoice in heistOptions:
-                    break
-                else:
-                    print("Invalid choice. Please enter a valid option.")
-            except ValueError:
-                print("Invalid input. Please enter a valid option.")
-                
-                
-        if heistChoice == 1:
-            print(" ")
-            print("No Rest For The Wicked Favors")
-            print("Option - 1 : Van Escape")
-            print("Option - 2 : Additional Secure Point")
-            print("Option - 3 : Keycard Access")
-            print("Option - 4 : More Thermite")
+            print("Enter 0 to Exit!")
+            print("Enter 60 to buy all")
+            selection = int(input("Enter the number of the item you want to select: "))
+            if selection == 0:
+                break
+            elif selection == 60:
+                repeat_request_heistfav_1 = int(input("Enter the total number of times you want the request to send: "))
+                for item_name, item_data in heist_list:
+                    item_id = item_data['itemId']
+                    price = item_data['price']
+                    for _ in range(repeat_request_heistfav_1):
+                        data['itemId'] = item_id
+                        data['price'] = price
+                        data['discountedPrice'] = price
+                        data['currencyCode'] = "CASH"
+                        response = requests.post(url, json=data, headers=headers)
+                    print(f"Item Purchased {item_name}")
+            elif 1 <= selection <= counter:
+                heist_add = heist_list[selection - 1]
+                heist_added_inv.append(heist_add)
+                print(f"Added {heist_add[0]} to cart")
+                        
+            else:
+                print("Invalid selection. Please choose a valid number.")
+        repeat_request_heistfav_2 = int(input("Enter the total number of times you want the request to send: "))
+        for _ in range(repeat_request_heistfav_2):
+            for heist_add in heist_added_inv:
+                heist_id = heist_added_inv[0]
+                heist_details = heist_id[1]
+                item_id = heist_details['itemId']
+                data['itemId'] = heist_id[1]['itemId']
+                data['price'] = heist_id[1]['price']
+                data['discountedPrice'] = heist_id[1]['price']
+                data['currencyCode'] = "CASH"
+                response = requests.post(url, json=data, headers=headers)
+                print(f"Item Purchased = {heist_add[0]}")
+        delete_file("response.json")
 
-            while True:
-                try:
-                    favorChoice = int(input("Enter the option: "))
-                    if favorChoice in favorOptions:
-                        break
-                    else:
-                        print("Invalid choice. Please enter a valid option.")
-                except ValueError:
-                    print("Invalid input. Please enter a valid option.")
+    elif choice == 4:
+        item_id_json = read_json_file("Payday3_offsets.json")
+        suite = item_id_json['Suits']
+        suite_list = []
+        counter = 1
+        for suite_group in suite:
+            for suite_alias, suite_data in suite_group.items():
+                for suite_info in suite_data:
+                    print("\n" f"{suite_alias}: ")
+                    for key, value in suite_info.items():
+                        print(f"{counter}. {key}: {value['price']}$")
+                        suite_list.append((key, value))
+                        counter += 1                        
+        print()
+        suit_added_inv = []
+        while True:
+            print("Enter 0 to Exit!")
+            suite_select = int(input("Enter the number of suite to purchase: "))
+            if suite_select == 0:
+                break
+            elif 1 <= suite_select <= counter:
+                newsuite_add = suite_list[suite_select - 1]
+                suit_added_inv.append(newsuite_add)
+                print(f"Added {newsuite_add[0]} to Cart.")
+            else:
+                print("Invalid selection. Please choose a valid option.")
 
-            repeat_request = int(input("Enter the total number of times you want the request to send: "))
-            print(" ")
-            if favorChoice == 1:
-                for _ in range(repeat_request):
-                    data["itemId"] = "7ef67d46c6224310b813afcc5f53ae62"
-                    data["price"] = 1000
-                    data["discountedPrice"] = 1000
-                    data["currencyCode"] = "CASH"
-                    response = requests.post(url, json=data, headers=headers)
-                    print(f"Favors Bought successfully - {_ + 1}")
-            elif favorChoice == 2:
-                for _ in range(repeat_request):
-                    data["itemId"] = "7ffcce86f7bb4dd78e9fcd6755fc9a43"
-                    data["price"] = 1000
-                    data["discountedPrice"] = 1000
-                    data["currencyCode"] = "CASH"
-                    response = requests.post(url, json=data, headers=headers)
-                    print(f"Favors Bought successfully - {_ + 1}")
-            elif favorChoice == 3:
-                for _ in range(repeat_request):
-                    data["itemId"] = "fb595a70be16479cbd6398866ceace43"
-                    data["price"] = 1000
-                    data["discountedPrice"] = 1000
-                    data["currencyCode"] = "CASH"
-                    response = requests.post(url, json=data, headers=headers)
-                    print(f"Favors Bought successfully - {_ + 1}")
-            elif favorChoice == 4:
-                for _ in range(repeat_request):
-                    data["itemId"] = "ec4f15db42d54fdfa1a4716d3e880aaf"
-                    data["price"] = 1000
-                    data["discountedPrice"] = 1000
-                    data["currencyCode"] = "CASH"
-                    response = requests.post(url, json=data, headers=headers)
-                    print(f"Favors Bought successfully - {_ + 1}")
-                    
-        elif heistChoice == 2:
-            print(" ")
-            print("Road Rage Favors")
-            print("Option - 1 : Garbage Chute Secure Point")
-            print("Option - 2 : Stronger RC Signal")
-            print("Option - 3 : Sniper Tower")
-            print("Option - 4 : More Planks")
+        for newsuite_add in suit_added_inv:
+            suit_id = suit_added_inv[0]
+            suite_details = suit_id[1]
+            item_id = suite_details['id']
+            data['itemId'] = suit_id[1]["id"]
+            data['price'] = suit_id[1]['price']
+            data['discountedPrice'] = suit_id[1]['price']
+            data['currencyCode'] = "CASH"
+            response = requests.post(url, json=data, headers=headers)
+            print(f"Item Bought Successfully - {newsuite_add[0]}")
+    
+    elif choice  == 5:
+        item_id_json = read_json_file("Payday3_offsets.json")
+        weapon_paint = item_id_json['Weapon Paint Schemes']
+        weapon_paint_list = []
+        counter = 1
+        for weapon_paint_info in weapon_paint:
+            for key, value in weapon_paint_info.items():
+                print(f"{counter}. {key}: {value['price']}$")
+                weapon_paint_list.append((key, value))
+                counter += 1
+        print()
+        weapon_paint_inv = []
+        while True:
+            print("Enter 0 to Exit!")
+            weapon_paint_select = int(input("Enter the number of paint to purchase: "))
+            if weapon_paint_select == 0:
+                break
+            elif 1 <= weapon_paint_select <= counter:
+                weapon_paint_add = weapon_paint_list[weapon_paint_select - 1]
+                weapon_paint_inv.append(weapon_paint_add)
+                print(f"Added {weapon_paint_add[0]} to Cart.")
+            else:
+                print("Invalid selection. Please choose a valid option.")
+        for weapon_paint_add in weapon_paint_inv:
+            paint_id = weapon_paint_inv[0]
+            paint_details = paint_id[1]
+            item_id = paint_details['itemId']
+            data['itemId'] = paint_id[1]['itemId']
+            data['price'] = paint_id[1]['price']
+            data['discountedPrice'] = paint_id[1]['price']
+            data['currencyCode'] = paint_id[1]['currency']
+            response = requests.post(url, json=data, headers=headers)
+            #print(response.content.decode('utf-8'))
+            print(f"Item Bought Successfully - {weapon_paint_add[0]}")
 
-            while True:
-                try:
-                    favorChoice = int(input("Enter the option: "))
-                    if favorChoice in favorOptions:
-                        break
-                    else:
-                        print("Invalid choice. Please enter a valid option.")
-                except ValueError:
-                    print("Invalid input. Please enter a valid option.")
+    elif choice == 6:
+        item_id_json = read_json_file("Payday3_offsets.json")
+        inventory_slots = item_id_json['Inventory Slots']
+        inventory_slots_list = []
+        counter = 1
+        for inventory_slots_info in inventory_slots:
+            for key, value in inventory_slots_info.items():
+                print(f"{counter}. {key}: {value['price']}$")
+                inventory_slots_list.append((key, value))
+                counter += 1
+        print()
+        inventory_slots_inv = []
+        while True:
+            print("Enter 0 to Exit!")
+            inventory_slots_select = int(input("Enter the number of paint to purchase: "))
+            if inventory_slots_select == 0:
+                break
+            elif 1<= inventory_slots_select <= counter:
+                inventory_slots_add = inventory_slots_list[inventory_slots_select - 1]
+                inventory_slots_inv.append(inventory_slots_add)
+                print(f"Added {inventory_slots_add[0]} to Cart.")
+            else:
+                print("Invalid selection. Please choose a valid option.")
+        inputuser_inventory = int(input("Enter the total number of times you want the request to send: "))
+        for _ in range(inputuser_inventory):
+            for inventory_slots_add in inventory_slots_inv:
+                inventory_id = inventory_slots_inv[0]
+                inventory_details = inventory_id[1]
+                item_id = inventory_details['itemId']
+                data['itemId'] = inventory_id[1]['itemId']
+                data['price'] = inventory_id[1]['price']
+                data['discountedPrice'] = inventory_id[1]['price']
+                data['currencyCode'] = inventory_id[1]['currency']
+                response = requests.post(url, json=data, headers=headers)
+                print(f"Item Bought Successfully - {inventory_slots_add[0]} {_ + 1}")
 
-            repeat_request = int(input("Enter the total number of times you want the request to send: "))
-            print(" ")
-            if favorChoice == 1:
-                for _ in range(repeat_request):
-                    data["itemId"] = "762a1305c25844a7aac3d0f0666c70e6"
-                    data["price"] = 1000
-                    data["discountedPrice"] = 1000
+    elif choice == 7:
+        item_id_json = read_json_file("Payday3_offsets.json")
+        color_paint = item_id_json['Paint Schemes_All']
+        color_list = []
+        counter = 1
+        for color_group in color_paint:
+            for color_alias, color_data in color_group.items():
+                for color_info in color_data:
+                    name = color_info['name']
+                    itemId = color_info['itemId']
+                    price = color_info['price']
+                    print(f"{counter}. {name}  : {price}$")
+                    color_list.append((name, itemId, price))
+                    counter += 1
+        print()
+        color_added_inv = []
+        while True:
+            print("Enter 0 to Exit!")
+            colorselect = int(input("Enter the number of the item you want to select: "))
+            if colorselect == 0:
+                break
+            elif 1 <= colorselect <= counter:
+                color_add = color_list[colorselect - 1]
+                color_added_inv.append(color_add)
+                print(f"Added {color_add[0]} to cart")
+            else:
+                print("Invalid selection. Please choose a valid number.")
+        repeat_request_paint = int(input("Enter the total number of times you want the request to send: "))
+        for _ in range(repeat_request_paint):
+                for color_add in color_added_inv:
+                    color_id = color_added_inv[0]
+                    color_details = color_id[1]
+                    item_id = color_details
+                    data["itemId"] = color_id[1]
+                    data["price"] = color_id[2]
+                    data["discountedPrice"] = color_id[2]
                     data["currencyCode"] = "CASH"
                     response = requests.post(url, json=data, headers=headers)
-                    print(f"Favors Bought successfully - {_ + 1}")
-            elif favorChoice == 2:
-                for _ in range(repeat_request):
-                    data["itemId"] = "86104f11f3534828b6112f28717c5308"
-                    data["price"] = 1000
-                    data["discountedPrice"] = 1000
-                    data["currencyCode"] = "CASH"
-                    response = requests.post(url, json=data, headers=headers)
-                    print(f"Favors Bought successfully - {_ + 1}")
-            elif favorChoice == 3:
-                for _ in range(repeat_request):
-                    data["itemId"] = "f55bbfc9483948d69be74a55b5cd5038"
-                    data["price"] = 1000
-                    data["discountedPrice"] = 1000
-                    data["currencyCode"] = "CASH"
-                    response = requests.post(url, json=data, headers=headers)
-                    print(f"Favors Bought successfully - {_ + 1}")
-            elif favorChoice == 4:
-                for _ in range(repeat_request):
-                    data["itemId"] = "0441acf170484c509bcb2c7869170403"
-                    data["price"] = 1000
-                    data["discountedPrice"] = 1000
-                    data["currencyCode"] = "CASH"
-                    response = requests.post(url, json=data, headers=headers)
-                    print(f"Favors Bought successfully - {_ + 1}")
-
-        elif heistChoice == 3:
-            print(" ")
-            print("Dirty Ice Favors")
-            print("Option - 1 : Distracted Manager")
-            print("Option - 2 : Escape Van Stays Longer")
-            print("Option - 3 : Chopper Extract")
-            print("Option - 4 : Employee Backdoor Access")
-
-            while True:
-                try:
-                    favorChoice = int(input("Enter the option: "))
-                    if favorChoice in favorOptions:
-                        break
-                    else:
-                        print("Invalid choice. Please enter a valid option.")
-                except ValueError:
-                    print("Invalid input. Please enter a valid option.")
-
-            repeat_request = int(input("Enter the total number of times you want the request to send: "))
-            print(" ")
-            if favorChoice == 1:
-                for _ in range(repeat_request):
-                    data["itemId"] = "a8a42735b6ed4bf48456de9f33ff6477"
-                    data["price"] = 1000
-                    data["discountedPrice"] = 1000
-                    data["currencyCode"] = "CASH"
-                    response = requests.post(url, json=data, headers=headers)
-                    print(f"Favors Bought successfully - {_ + 1}")
-            elif favorChoice == 2:
-                for _ in range(repeat_request):
-                    data["itemId"] = "736ee0a77016416ba9d35a9a5f4c7fd0"
-                    data["price"] = 1000
-                    data["discountedPrice"] = 1000
-                    data["currencyCode"] = "CASH"
-                    response = requests.post(url, json=data, headers=headers)
-                    print(f"Favors Bought successfully - {_ + 1}")
-            elif favorChoice == 3:
-                for _ in range(repeat_request):
-                    data["itemId"] = "b21d68ea6ba94dc38032697233b6aa41"
-                    data["price"] = 1000
-                    data["discountedPrice"] = 1000
-                    data["currencyCode"] = "CASH"
-                    response = requests.post(url, json=data, headers=headers)
-                    print(f"Favors Bought successfully - {_ + 1}")
-            elif favorChoice == 4:
-                for _ in range(repeat_request):
-                    data["itemId"] = "ed3734c6be7142ca9ac17df4b91e4acb"
-                    data["price"] = 1000
-                    data["discountedPrice"] = 1000
-                    data["currencyCode"] = "CASH"
-                    response = requests.post(url, json=data, headers=headers)
-                    print(f"Favors Bought successfully - {_ + 1}")
-
-        elif heistChoice == 4:
-            print(" ")
-            print("Rock The Cradle Favors")
-            print("Option - 1 : Additional Secure Point")
-            print("Option - 2 : Vault Code")
-            print("Option - 3 : Extended Crypto Wallet Timer")
-            print("Option - 4 : Inside Man Keycard")
-
-            while True:
-                try:
-                    favorChoice = int(input("Enter the option: "))
-                    if favorChoice in favorOptions:
-                        break
-                    else:
-                        print("Invalid choice. Please enter a valid option.")
-                except ValueError:
-                    print("Invalid input. Please enter a valid option.")
-
-            repeat_request = int(input("Enter the total number of times you want the request to send: "))
-            print(" ")
-            if favorChoice == 1:
-                for _ in range(repeat_request):
-                    data["itemId"] = "3540c541445e4c86be79d0d9d618fa62"
-                    data["price"] = 1000
-                    data["discountedPrice"] = 1000
-                    data["currencyCode"] = "CASH"
-                    response = requests.post(url, json=data, headers=headers)
-                    print(f"Favors Bought successfully - {_ + 1}")
-            elif favorChoice == 2:
-                for _ in range(repeat_request):
-                    data["itemId"] = "65a355215bb8473bbf9d3f2661211899"
-                    data["price"] = 1999
-                    data["discountedPrice"] = 1999
-                    data["currencyCode"] = "CASH"
-                    response = requests.post(url, json=data, headers=headers)
-                    print(f"Favors Bought successfully - {_ + 1}")
-            elif favorChoice == 3:
-                for _ in range(repeat_request):
-                    data["itemId"] = "dca07cf916b04dbf8f3eb4a134e874cf"
-                    data["price"] = 1000
-                    data["discountedPrice"] = 1000
-                    data["currencyCode"] = "CASH"
-                    response = requests.post(url, json=data, headers=headers)
-                    print(f"Favors Bought successfully - {_ + 1}")
-            elif favorChoice == 4:
-                for _ in range(repeat_request):
-                    data["itemId"] = "ea9fd9afab3d4e88ab8f9276bd5e66b3"
-                    data["price"] = 1000
-                    data["discountedPrice"] = 1000
-                    data["currencyCode"] = "CASH"
-                    response = requests.post(url, json=data, headers=headers)
-                    print(f"Favors Bought successfully - {_ + 1}")
-                    
-        elif heistChoice == 5:
-            print(" ")
-            print("Under The Surphaze Favors")
-            print("Option - 1 : Additional Secure Point")
-            print("Option - 2 : Keycard Access")
-            print("Option - 3 : Open Doors")
-            print("Option - 4 : Helicopter Pilot")
-
-            while True:
-                try:
-                    favorChoice = int(input("Enter the option: "))
-                    if favorChoice in favorOptions:
-                        break
-                    else:
-                        print("Invalid choice. Please enter a valid option.")
-                except ValueError:
-                    print("Invalid input. Please enter a valid option.")
-
-            repeat_request = int(input("Enter the total number of times you want the request to send: "))
-            print(" ")
-            if favorChoice == 1:
-                for _ in range(repeat_request):
-                    data["itemId"] = "ed77cf56bf8d435ab25b07eb476bf341"
-                    data["price"] = 1000
-                    data["discountedPrice"] = 1000
-                    data["currencyCode"] = "CASH"
-                    response = requests.post(url, json=data, headers=headers)
-                    print(f"Favors Bought successfully - {_ + 1}")
-            elif favorChoice == 2:
-                for _ in range(repeat_request):
-                    data["itemId"] = "714a8344431147b1bbb9a36c51a6e0fe"
-                    data["price"] = 1000
-                    data["discountedPrice"] = 1000
-                    data["currencyCode"] = "CASH"
-                    response = requests.post(url, json=data, headers=headers)
-                    print(f"Favors Bought successfully - {_ + 1}")
-            elif favorChoice == 3:
-                for _ in range(repeat_request):
-                    data["itemId"] = "d1a8dbc374684db69970fb9655af3e98"
-                    data["price"] = 1000
-                    data["discountedPrice"] = 1000
-                    data["currencyCode"] = "CASH"
-                    response = requests.post(url, json=data, headers=headers)
-                    print(f"Favors Bought successfully - {_ + 1}")
-            elif favorChoice == 4:
-                for _ in range(repeat_request):
-                    data["itemId"] = "3872ce94c1bf4ae49962e97e6eee4c13"
-                    data["price"] = 1000
-                    data["discountedPrice"] = 1000
-                    data["currencyCode"] = "CASH"
-                    response = requests.post(url, json=data, headers=headers)
-                    print(f"Favors Bought successfully - {_ + 1}")
-                    
-        elif heistChoice == 6:
-            print(" ")
-            print("Gold & Sharke Favors")
-            print("Option - 1 : Teller Doors Open")
-            print("Option - 2 : Cafe Celebration")
-            print("Option - 3 : Thermal Lance Parts Stashed Inside")
-            print("Option - 4 : Elevator Shaft Access")
-
-            while True:
-                try:
-                    favorChoice = int(input("Enter the option: "))
-                    if favorChoice in favorOptions:
-                        break
-                    else:
-                        print("Invalid choice. Please enter a valid option.")
-                except ValueError:
-                    print("Invalid input. Please enter a valid option.")
-
-            repeat_request = int(input("Enter the total number of times you want the request to send: "))
-            print(" ")
-            if favorChoice == 1:
-                for _ in range(repeat_request):
-                    data["itemId"] = "244a532a15a540b8a2bb08ba61ca2cbe"
-                    data["price"] = 1000
-                    data["discountedPrice"] = 1000
-                    data["currencyCode"] = "CASH"
-                    response = requests.post(url, json=data, headers=headers)
-                    print(f"Favors Bought successfully - {_ + 1}")
-            elif favorChoice == 2:
-                for _ in range(repeat_request):
-                    data["itemId"] = "24fb047fe6bb4227a09d1089d1271f7d"
-                    data["price"] = 1000
-                    data["discountedPrice"] = 1000
-                    data["currencyCode"] = "CASH"
-                    response = requests.post(url, json=data, headers=headers)
-                    print(f"Favors Bought successfully - {_ + 1}")
-            elif favorChoice == 3:
-                for _ in range(repeat_request):
-                    data["itemId"] = "df2e66d7a0e94ff28ba46337ceaf9555"
-                    data["price"] = 1000
-                    data["discountedPrice"] = 1000
-                    data["currencyCode"] = "CASH"
-                    response = requests.post(url, json=data, headers=headers)
-                    print(f"Favors Bought successfully - {_ + 1}")
-            elif favorChoice == 4:
-                for _ in range(repeat_request):
-                    data["itemId"] = "6c0bc7b7053c486496f68402d313c20d"
-                    data["price"] = 1000
-                    data["discountedPrice"] = 1000
-                    data["currencyCode"] = "CASH"
-                    response = requests.post(url, json=data, headers=headers)
-                    print(f"Favors Bought successfully - {_ + 1}")
-                    
-        elif heistChoice == 7:
-            print(" ")
-            print("99 Boxes Favors")
-            print("Option - 1 : Open Container")
-            print("Option - 2 : Longer Degredation Time")
-            print("Option - 3 : More Explosives")
-            print("Option - 4 : Better Thermite Drop")
-
-            while True:
-                try:
-                    favorChoice = int(input("Enter the option: "))
-                    if favorChoice in favorOptions:
-                        break
-                    else:
-                        print("Invalid choice. Please enter a valid option.")
-                except ValueError:
-                    print("Invalid input. Please enter a valid option.")
-
-            repeat_request = int(input("Enter the total number of times you want the request to send: "))
-            print(" ")
-            if favorChoice == 1:
-                for _ in range(repeat_request):
-                    data["itemId"] = "0cd47901794a44b38a9f2d4b7b1b3f61"
-                    data["price"] = 1000
-                    data["discountedPrice"] = 1000
-                    data["currencyCode"] = "CASH"
-                    response = requests.post(url, json=data, headers=headers)
-                    print(f"Favors Bought successfully - {_ + 1}")
-            elif favorChoice == 2:
-                for _ in range(repeat_request):
-                    data["itemId"] = "96de618c6aca4d3a9b4df9b3220fcb1c"
-                    data["price"] = 1000
-                    data["discountedPrice"] = 1000
-                    data["currencyCode"] = "CASH"
-                    response = requests.post(url, json=data, headers=headers)
-                    print(f"Favors Bought successfully - {_ + 1}")
-            elif favorChoice == 3:
-                for _ in range(repeat_request):
-                    data["itemId"] = "b91465e2dc624101a3d157305637bbda"
-                    data["price"] = 1000
-                    data["discountedPrice"] = 1000
-                    data["currencyCode"] = "CASH"
-                    response = requests.post(url, json=data, headers=headers)
-                    print(f"Favors Bought successfully - {_ + 1}")
-            elif favorChoice == 4:
-                for _ in range(repeat_request):
-                    data["itemId"] = "ff2464ce14da473e97590ea2fb33b327"
-                    data["price"] = 1000
-                    data["discountedPrice"] = 1000
-                    data["currencyCode"] = "CASH"
-                    response = requests.post(url, json=data, headers=headers)
-                    print(f"Favors Bought successfully - {_ + 1}")
-                    
-        elif heistChoice == 8:
-            print(" ")
-            print("Touch The Sky Favors")
-            print("Option - 1 : Window Platform")
-            print("Option - 2 : Thermite Stashed")
-            print("Option - 3 : Poison")
-            print("Option - 4 : Vent Secure Point")
-
-            while True:
-                try:
-                    favorChoice = int(input("Enter the option: "))
-                    if favorChoice in favorOptions:
-                        break
-                    else:
-                        print("Invalid choice. Please enter a valid option.")
-                except ValueError:
-                    print("Invalid input. Please enter a valid option.")
-
-            repeat_request = int(input("Enter the total number of times you want the request to send: "))
-            print(" ")
-            if favorChoice == 1:
-                for _ in range(repeat_request):
-                    data["itemId"] = "d953877d2f494605b89f40896fe85781"
-                    data["price"] = 1000
-                    data["discountedPrice"] = 1000
-                    data["currencyCode"] = "CASH"
-                    response = requests.post(url, json=data, headers=headers)
-                    print(f"Favors Bought successfully - {_ + 1}")
-            elif favorChoice == 2:
-                for _ in range(repeat_request):
-                    data["itemId"] = "87d91fc1cc5f4e8fa3c4e9e2bd303376"
-                    data["price"] = 1000
-                    data["discountedPrice"] = 1000
-                    data["currencyCode"] = "CASH"
-                    response = requests.post(url, json=data, headers=headers)
-                    print(f"Favors Bought successfully - {_ + 1}")
-            elif favorChoice == 3:
-                for _ in range(repeat_request):
-                    data["itemId"] = "b815a9b61ba944dda953eb85fd8d6bbf"
-                    data["price"] = 1000
-                    data["discountedPrice"] = 1000
-                    data["currencyCode"] = "CASH"
-                    response = requests.post(url, json=data, headers=headers)
-                    print(f"Favors Bought successfully - {_ + 1}")
-            elif favorChoice == 4:
-                for _ in range(repeat_request):
-                    data["itemId"] = "86b9d2fede264495a71aac9786b20a45"
-                    data["price"] = 1000
-                    data["discountedPrice"] = 1000
-                    data["currencyCode"] = "CASH"
-                    response = requests.post(url, json=data, headers=headers)
-                    print(f"Favors Bought successfully - {_ + 1}")
-            
-    elif choice == 9:
-        exit()
+                    print(f"Item Purchased = {color_add[0]}")
